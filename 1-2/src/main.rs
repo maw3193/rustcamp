@@ -9,7 +9,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let file = std::io::BufReader::new(std::fs::File::open(filename)?);
     let mut prog: std::vec::Vec<char> = std::vec::Vec::new();
     for byte in file.bytes() {
-    //    println!("{}", byte.unwrap());
         let byte = byte?;
         if BRAINFUCK_CHARS.contains(&byte) {
             prog.push(byte as char);
