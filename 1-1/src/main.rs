@@ -9,8 +9,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let reader = std::io::BufReader::new(file);
     for line in reader.lines() {
         // parse line as a single number
-        //println!("{}", line?);
-        let num: i32 = line?.parse().unwrap();
+        let num: i32 = line?.parse()?;
         // sum up number
         sum += num;
     }
