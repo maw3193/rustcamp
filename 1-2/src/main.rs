@@ -1,20 +1,12 @@
-// Project specification: Load a source file
-// convert it to a sequence of bytes
-// strip out any characters that aren't valid brainfuck
 use std::io::Read;
 const BRAINFUCK_CHARS: &[u8; 8] = b",.<>[]-+";
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let filename = std::env::args().nth(1).ok_or("Expected filename")?;
     let file = std::io::BufReader::new(std::fs::File::open(filename)?);
-    let mut prog: std::vec::Vec<char> = std::vec::Vec::new();
-    for byte in file.bytes() {
-        let byte = byte?;
-        if BRAINFUCK_CHARS.contains(&byte) {
-            prog.push(byte as char);
-        }
-    }
-
-    println!("{}", prog.into_iter().collect::<std::string::String>());
+    // BufReader.bytes() returns an iterator of Results. First, handle Error, then filter.
+    let loaded: Result<std::vec::Vec<_>,_> = file.bytes().collect();
+    let prog = loaded?.into_iter().filter(|x| BRAINFUCK_CHARS.contains(x)).collect();
+    println!("{}", std::string::String::from_utf8(prog)?);
     Ok(())
 }
