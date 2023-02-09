@@ -2,6 +2,7 @@ use std::convert::TryFrom;
 use std::io::BufRead;
 use std::vec::Vec;
 
+#[derive(Debug)]
 enum InputEntry {
     NameOnly(String),
     NameAndNumber(String, u32)
@@ -34,6 +35,9 @@ fn load_input_entries(filename: &String) -> Result<Vec<InputEntry>, Box<dyn std:
         .collect::<Result<Vec<_>, _>>()
 }
 
-fn main() {
-    println!("Hello, world!");
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let filename = std::env::args().nth(1).ok_or("Expected filename")?;
+    let entries = load_input_entries(&filename)?;
+    println!("{:?}", entries);
+    Ok(())
 }
