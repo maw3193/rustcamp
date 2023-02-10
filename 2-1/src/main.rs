@@ -1,6 +1,8 @@
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::io::BufRead;
 use std::vec::Vec;
+use std::default::Default;
 
 #[derive(Debug)]
 enum InputEntry {
@@ -24,6 +26,33 @@ impl TryFrom<&str> for InputEntry {
     type Error = Box<dyn std::error::Error>;
 }
 
+#[derive(Default)]
+#[derive(Debug)]
+struct ScoreStruct {
+    num_attempts: u32,
+    total_score: u32,
+    missed_tests: u32,
+}
+
+impl ScoreStruct {
+    pub fn add_score(&mut self, score: u32) {
+        self.num_attempts += 1;
+        self.total_score += score;
+    }
+    pub fn miss_test(&mut self) {
+        self.missed_tests += 1;
+    }
+    pub fn get_attempts(&self) -> u32 {
+        self.num_attempts
+    }
+    pub fn get_score(&self) -> u32 {
+        self.total_score
+    }
+    pub fn get_missed(&self) -> u32 {
+        self.missed_tests
+    }
+}
+
 fn load_input_entries(filename: &String) -> Result<Vec<InputEntry>, Box<dyn std::error::Error>> {
     let file = std::io::BufReader::new(std::fs::File::open(filename)?);
     // file.lines is a Result, because it may fail.
@@ -35,9 +64,25 @@ fn load_input_entries(filename: &String) -> Result<Vec<InputEntry>, Box<dyn std:
         .collect::<Result<Vec<_>, _>>()
 }
 
+fn calculate_scores(entries: Vec<InputEntry>) -> HashMap<String, ScoreStruct> {
+    let mut scores: HashMap<String, ScoreStruct> = HashMap::new();
+    for entry in entries.into_iter() {
+        match entry {
+            InputEntry::NameOnly(name) => {
+                scores.entry(name).or_insert(Default::default()).miss_test()
+            }
+            InputEntry::NameAndNumber(name, number) => {
+                scores.entry(name).or_insert(Default::default()).add_score(number)
+            }
+        }
+    }
+    scores
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let filename = std::env::args().nth(1).ok_or("Expected filename")?;
     let entries = load_input_entries(&filename)?;
-    println!("{:?}", entries);
+    let scores = calculate_scores(entries);
+    println!("{:?}", &scores);
     Ok(())
 }
