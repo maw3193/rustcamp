@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::fmt;
 use std::io::BufRead;
 use std::vec::Vec;
 use std::default::Default;
@@ -53,6 +54,15 @@ impl ScoreStruct {
     }
 }
 
+impl fmt::Display for ScoreStruct {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // ???: Is two spaces after a full stop a requirement?
+        write!(f, "{} tests, with a total score of {}. They missed {} tests",
+            self.num_attempts, self.total_score, self.missed_tests,
+        )
+    }
+}
+
 fn load_input_entries(filename: &String) -> Result<Vec<InputEntry>, Box<dyn std::error::Error>> {
     let file = std::io::BufReader::new(std::fs::File::open(filename)?);
     // file.lines is a Result, because it may fail.
@@ -79,10 +89,16 @@ fn calculate_scores(entries: Vec<InputEntry>) -> HashMap<String, ScoreStruct> {
     scores
 }
 
+fn print_scores(scores: &HashMap<String, ScoreStruct>) {
+    for (name, score) in scores.iter() {
+        println!("{name} took {score}");
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let filename = std::env::args().nth(1).ok_or("Expected filename")?;
     let entries = load_input_entries(&filename)?;
     let scores = calculate_scores(entries);
-    println!("{:?}", &scores);
+    print_scores(&scores);
     Ok(())
 }
