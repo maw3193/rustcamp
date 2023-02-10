@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::default::Default;
 use std::fmt;
 use std::io::BufRead;
 use std::vec::Vec;
-use std::default::Default;
 
 #[derive(Debug)]
 enum InputEntry {
     NameOnly(String),
-    NameAndNumber(String, u32)
+    NameAndNumber(String, u32),
 }
 
 impl TryFrom<&str> for InputEntry {
@@ -18,17 +18,22 @@ impl TryFrom<&str> for InputEntry {
         if parts.len() == 1 {
             Ok(InputEntry::NameOnly(parts[0].to_string()))
         } else if parts.len() == 2 {
-            Ok(InputEntry::NameAndNumber(parts[0].to_string(), parts[1].parse()?))
+            Ok(InputEntry::NameAndNumber(
+                parts[0].to_string(),
+                parts[1].parse()?,
+            ))
         } else {
-            Err(Box::from(format!("{} was not split by colons into 1 or 2 parts", value)))
+            Err(Box::from(format!(
+                "{} was not split by colons into 1 or 2 parts",
+                value
+            )))
         }
     }
 
     type Error = Box<dyn std::error::Error>;
 }
 
-#[derive(Default)]
-#[derive(Debug)]
+#[derive(Default, Debug)]
 struct ScoreStruct {
     num_attempts: u32,
     total_score: u32,
@@ -48,7 +53,9 @@ impl ScoreStruct {
 impl fmt::Display for ScoreStruct {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // ???: Is two spaces after a full stop a requirement?
-        write!(f, "{} tests, with a total score of {}. They missed {} tests",
+        write!(
+            f,
+            "{} tests, with a total score of {}. They missed {} tests",
             self.num_attempts, self.total_score, self.missed_tests,
         )
     }
@@ -59,7 +66,7 @@ fn load_input_entries(filename: &String) -> Result<Vec<InputEntry>, Box<dyn std:
     // file.lines is a Result, because it may fail.
     // InputEntry::try_from(str) is a Result because it may fail.
     file.lines()
-        .collect::<Result<Vec<_>,_>>()?
+        .collect::<Result<Vec<_>, _>>()?
         .into_iter()
         .map(|x| InputEntry::try_from(x.as_str()))
         .collect::<Result<Vec<_>, _>>()
@@ -72,9 +79,10 @@ fn calculate_scores(entries: Vec<InputEntry>) -> HashMap<String, ScoreStruct> {
             InputEntry::NameOnly(name) => {
                 scores.entry(name).or_insert(Default::default()).miss_test()
             }
-            InputEntry::NameAndNumber(name, number) => {
-                scores.entry(name).or_insert(Default::default()).add_score(number)
-            }
+            InputEntry::NameAndNumber(name, number) => scores
+                .entry(name)
+                .or_insert(Default::default())
+                .add_score(number),
         }
     }
     scores
