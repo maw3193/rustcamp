@@ -43,15 +43,6 @@ impl ScoreStruct {
     pub fn miss_test(&mut self) {
         self.missed_tests += 1;
     }
-    pub fn get_attempts(&self) -> u32 {
-        self.num_attempts
-    }
-    pub fn get_score(&self) -> u32 {
-        self.total_score
-    }
-    pub fn get_missed(&self) -> u32 {
-        self.missed_tests
-    }
 }
 
 impl fmt::Display for ScoreStruct {
