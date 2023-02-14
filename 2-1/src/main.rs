@@ -81,7 +81,7 @@ fn calculate_scores(entries: Vec<InputEntry>) -> HashMap<String, ScoreStruct> {
             }
             InputEntry::NameAndNumber(name, number) => scores
                 .entry(name)
-                .or_insert(Default::default())
+                .or_default()
                 .add_score(number),
         }
     }
