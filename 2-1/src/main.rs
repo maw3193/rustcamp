@@ -77,7 +77,7 @@ fn calculate_scores(entries: Vec<InputEntry>) -> HashMap<String, ScoreStruct> {
     for entry in entries.into_iter() {
         match entry {
             InputEntry::NameOnly(name) => {
-                scores.entry(name).or_insert(Default::default()).miss_test()
+                scores.entry(name).or_default().miss_test()
             }
             InputEntry::NameAndNumber(name, number) => scores
                 .entry(name)
