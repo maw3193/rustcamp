@@ -48,6 +48,8 @@ impl ScoreStruct {
     pub fn miss_test(&mut self) {
         self.missed_tests += 1;
     }
+    // trivial accessor functions were removed in a previous commit because they were never used.
+    // ???: Should internal methods (e.g. fmt) also use trivial accessors?
 }
 
 impl fmt::Display for ScoreStruct {
