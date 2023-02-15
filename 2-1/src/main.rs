@@ -12,16 +12,51 @@ enum InputEntry {
 }
 
 impl TryFrom<&str> for InputEntry {
+    // https://www.kalzumeus.com/2010/06/17/falsehoods-programmers-believe-about-names/
+    // i.e. nothing forbids names from containing colons, or even being an
+    // empty string.
+    // By explicit instruction, colons are reserved for delimiters, thus names
+    // cannot contain colons.
+    // I am also deciding on my own initiative that a name must have
+    // *something*, no empty strings.
+    // 'Name: 12' unambiguous, simple to implement -> Allow it!
+    // 'name:12' nothing says a name has to start with an upper-case letter
+    // 'Name :12' a valid name, even if the space is probably a typo.
+    // ':231' is arguably a valid name, but I'm deciding a name must have *something*.
+    // 'fdsfds:' Colons are reserved for delimiters, but there's no number on
+    // the right-hand side.
+    // 'ufdd::12' too many delimiters, malformed expression.
+    // 'Robert'; -- \nDROP TABLE students       ;:12' Bobby Tables is innocent,
+    // but make sure \n is expressed literally, not as a new line.
     fn try_from(value: &str) -> Result<Self, Box<dyn std::error::Error>> {
         // parse string. split by colon, left is string, right is u32.
         let parts: Vec<&str> = value.split(":").collect();
         if parts.len() == 1 {
-            Ok(InputEntry::NameOnly(parts[0].to_string()))
+            if parts[0].is_empty() {
+                Err(Box::from(format!(
+                    "{} has an empty string in its name section",
+                    value
+                )))
+            } else {
+                Ok(InputEntry::NameOnly(parts[0].to_string()))
+            }
         } else if parts.len() == 2 {
-            Ok(InputEntry::NameAndNumber(
-                parts[0].to_string(),
-                parts[1].parse()?,
-            ))
+            if parts[0].is_empty() {
+                Err(Box::from(format!(
+                    "{} has an empty string in its name section",
+                    value
+                )))
+            } else if parts[1].is_empty() {
+                Err(Box::from(format!(
+                    "{} has an empty string in its number section",
+                    value
+                )))
+            } else {
+                Ok(InputEntry::NameAndNumber(
+                    parts[0].to_string(),
+                    parts[1].trim().parse()?,
+                ))
+            }
         } else {
             Err(Box::from(format!(
                 "{} was not split by colons into 1 or 2 parts",
@@ -48,13 +83,11 @@ impl ScoreStruct {
     pub fn miss_test(&mut self) {
         self.missed_tests += 1;
     }
-    // trivial accessor functions were removed in a previous commit because they were never used.
-    // ???: Should internal methods (e.g. fmt) also use trivial accessors?
+    // trivial accessor functions were removed in commit dfb4432 because they were never used.
 }
 
 impl fmt::Display for ScoreStruct {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // ???: Is two spaces after a full stop a requirement?
         write!(
             f,
             "{} tests, with a total score of {}. They missed {} tests",
@@ -78,13 +111,10 @@ fn calculate_scores(entries: Vec<InputEntry>) -> HashMap<String, ScoreStruct> {
     let mut scores: HashMap<String, ScoreStruct> = HashMap::new();
     for entry in entries.into_iter() {
         match entry {
-            InputEntry::NameOnly(name) => {
-                scores.entry(name).or_default().miss_test()
+            InputEntry::NameOnly(name) => scores.entry(name).or_default().miss_test(),
+            InputEntry::NameAndNumber(name, number) => {
+                scores.entry(name).or_default().add_score(number)
             }
-            InputEntry::NameAndNumber(name, number) => scores
-                .entry(name)
-                .or_default()
-                .add_score(number),
         }
     }
     scores
