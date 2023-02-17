@@ -31,32 +31,23 @@ impl TryFrom<&str> for InputEntry {
     fn try_from(value: &str) -> Result<Self, Box<dyn std::error::Error>> {
         // parse string. split by colon, left is string, right is u32.
         let parts: Vec<&str> = value.split(":").collect();
-        if parts.len() == 1 {
-            if parts[0].is_empty() {
-                Err(Box::from(format!(
-                    "{} has an empty string in its name section",
-                    value
-                )))
-            } else {
-                Ok(InputEntry::NameOnly(parts[0].to_string()))
-            }
+        if parts[0].is_empty() {
+            Err(Box::from(format!(
+                "'{}' has an empty string in its name section",
+                value
+            )))
+        } else if parts.len() == 2 && parts[1].is_empty() {
+            Err(Box::from(format!(
+                "'{}' has an empty string in its number section",
+                value
+            )))
+        } else if parts.len() == 1 {
+            Ok(InputEntry::NameOnly(parts[0].to_string()))
         } else if parts.len() == 2 {
-            if parts[0].is_empty() {
-                Err(Box::from(format!(
-                    "{} has an empty string in its name section",
-                    value
-                )))
-            } else if parts[1].is_empty() {
-                Err(Box::from(format!(
-                    "{} has an empty string in its number section",
-                    value
-                )))
-            } else {
-                Ok(InputEntry::NameAndNumber(
-                    parts[0].to_string(),
-                    parts[1].trim().parse()?,
-                ))
-            }
+            Ok(InputEntry::NameAndNumber(
+                parts[0].to_string(),
+                parts[1].trim().parse()?,
+            ))
         } else {
             Err(Box::from(format!(
                 "{} was not split by colons into 1 or 2 parts",
