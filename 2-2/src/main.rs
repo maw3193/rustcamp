@@ -72,7 +72,7 @@ fn read_brainfuck_instructions(
     let mut instructions: Vec<PositionedInstruction> = Vec::new();
     let file = std::io::BufReader::new(std::fs::File::open(filename)?);
     for (line_index, line) in file.lines().enumerate() {
-        for (char_index, byte) in line?.into_bytes().into_iter().enumerate() {
+        for (char_index, byte) in line?.bytes().enumerate() {
             let raw = RawInstruction::from_byte(byte);
             if raw.is_some() {
                 instructions.push(PositionedInstruction {
