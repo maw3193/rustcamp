@@ -1,0 +1,10 @@
+First up, I love that you referenced "falsehoods programmers believe...".
+
+Your `TryFrom` implementation, however, could have been a lot simpler (though
+perhaps with one fewer error message) if you'd just used `value.split_once(':')`
+which was what I was hoping people would find.
+
+Your use of the hashmap entry API was perfect, well done.
+
+Buuuut, your `Display` method for the scores failed to take into account
+plural vs. singular for `test`. :(

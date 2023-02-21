@@ -1,0 +1,15 @@
+Good use of `match` as an expression in your `Display` impl; though you could
+have avoided the use of `write!{f, "{}", ...}` if you'd used `f.write_str(...)`
+instead.
+
+For your `PositionedInstruction` struct, I was not expecting you to put the
+filename in there - it's a huge waste of space particuarly for larger programs,
+and you could trivially have written the code for the exercise in the `main()`
+function instead of an extra `Display` impl and avoided that.
+
+Your parse loop used `if x.is_some() { .... x.unwrap() .... }` which is not
+very Rusty.
+
+Instead you can either use `match x` like we've learned already; or else there
+is a construct `if let Some(...) = x { ... }` which you can use where your
+`match` would otherwise only have one arm of use.
