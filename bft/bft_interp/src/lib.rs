@@ -7,7 +7,8 @@ pub struct Machine<T> {
 }
 
 impl<T> Machine<T>
-where T: std::clone::Clone + Default
+where
+    T: std::clone::Clone + Default,
 {
     pub fn new(mut size: usize, may_grow: bool) -> Machine<T> {
         if size == 0 {

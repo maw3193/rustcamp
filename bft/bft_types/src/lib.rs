@@ -1,8 +1,8 @@
+use std::fmt;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
 use std::string::String;
-use std::fmt;
 
 #[derive(Debug)]
 pub enum RawInstruction {
@@ -59,7 +59,6 @@ pub struct PositionedInstruction {
 }
 
 impl PositionedInstruction {
-    
     pub fn instruction(&self) -> &RawInstruction {
         &self.instruction
     }
@@ -75,11 +74,7 @@ impl PositionedInstruction {
 
 impl fmt::Display for PositionedInstruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}:{} {}",
-            self.line, self.character, self.instruction
-        )
+        write!(f, "{}:{} {}", self.line, self.character, self.instruction)
     }
 }
 
@@ -131,11 +126,7 @@ impl Program {
 impl fmt::Display for Program {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for instruction in self.instructions() {
-            write!(
-                f,
-                "{}:{}\n",
-                self.file(), instruction,
-            )?
+            write!(f, "{}:{}\n", self.file(), instruction,)?
         }
         Ok(())
     }
