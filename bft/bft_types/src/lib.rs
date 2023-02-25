@@ -1,7 +1,8 @@
 use std::fs::File;
 use std::io::{BufReader, Read};
-use std::path::{self, Path};
+use std::path::Path;
 use std::string::String;
+use std::fmt;
 
 #[derive(Debug)]
 pub enum RawInstruction {
@@ -31,6 +32,25 @@ impl RawInstruction {
     }
 }
 
+impl fmt::Display for RawInstruction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::IncrementDataPointer => "Increment current location",
+                Self::DecrementDataPointer => "Decrement current location",
+                Self::IncrementByte => "Increment the byte at the current location",
+                Self::DecrementByte => "Decrement the byte at the current location",
+                Self::PutByte => "Output the byte at the current location",
+                Self::GetByte => "Store a byte of input at the current location",
+                Self::OpenLoop => "Start looping",
+                Self::CloseLoop => "Stop looping",
+            }
+        )
+    }
+}
+
 #[derive(Debug)]
 pub struct PositionedInstruction {
     instruction: RawInstruction,
@@ -50,6 +70,16 @@ impl PositionedInstruction {
 
     pub fn character(&self) -> usize {
         self.character
+    }
+}
+
+impl fmt::Display for PositionedInstruction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}:{} {}",
+            self.line, self.character, self.instruction
+        )
     }
 }
 
@@ -95,6 +125,19 @@ impl Program {
 
     pub fn instructions(&self) -> &[PositionedInstruction] {
         &&self.instructions
+    }
+}
+
+impl fmt::Display for Program {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for instruction in self.instructions() {
+            write!(
+                f,
+                "{}:{}\n",
+                self.file(), instruction,
+            )?
+        }
+        Ok(())
     }
 }
 

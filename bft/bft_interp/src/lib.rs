@@ -1,4 +1,4 @@
-use std::default;
+use bft_types::Program;
 
 pub struct Machine<T> {
     cells: Vec<T>,
@@ -13,12 +13,17 @@ where T: std::clone::Clone + Default
         if size == 0 {
             size = 30000;
         }
-        let mut cells = vec![Default::default(); size];
+        let cells = vec![Default::default(); size];
         Machine {
             head: 0,
             cells: cells,
             may_grow: may_grow,
         }
+    }
+
+    // Seems very redundant, will probably be replaced with something else later
+    pub fn print_program(&self, prog: &Program) {
+        print!("{prog}")
     }
 }
 
