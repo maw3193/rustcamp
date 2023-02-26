@@ -1,9 +1,13 @@
+//! Brainfuck types library
+//! A description of the brainfuck language model, translated from text into rust data structures.
+
 use std::fmt;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
 use std::string::String;
 
+/// An enum of every possible instruction Brainfuck can execute
 #[derive(Debug, PartialEq)]
 pub enum RawInstruction {
     IncrementDataPointer,
@@ -17,7 +21,18 @@ pub enum RawInstruction {
 }
 
 impl RawInstruction {
-    fn from_byte(byte: u8) -> Option<RawInstruction> {
+    /// Constructs a RawInstruction from a byte
+    /// Returns an Option as we expect brainfuck code to contain bytes that aren't instructions.
+    /// # Examples
+    /// ```
+    /// # use bft_types::RawInstruction;
+    /// let instruction = RawInstruction::from_byte(b'>');
+    /// assert_eq!(instruction, Some(RawInstruction::IncrementDataPointer));
+    ///
+    /// let not_instruction = RawInstruction::from_byte(b'w');
+    /// assert_eq!(not_instruction, None);
+    /// ```
+    pub fn from_byte(byte: u8) -> Option<RawInstruction> {
         match byte {
             b'>' => Some(RawInstruction::IncrementDataPointer),
             b'<' => Some(RawInstruction::DecrementDataPointer),
@@ -51,6 +66,7 @@ impl fmt::Display for RawInstruction {
     }
 }
 
+/// A brainfuck instruction with added context of where it exists within the codebase
 #[derive(Debug)]
 pub struct PositionedInstruction {
     instruction: RawInstruction,
@@ -77,7 +93,7 @@ impl fmt::Display for PositionedInstruction {
         write!(f, "{}:{} {}", self.line, self.character, self.instruction)
     }
 }
-
+/// A collection of all the brainfuck instructions within a single source file
 #[derive(Debug)]
 pub struct Program {
     file: String,
@@ -85,15 +101,30 @@ pub struct Program {
 }
 
 impl Program {
+    /// Reads all the text in a file and converts it into a brainfuck program.
+    /// This process is fallible, so returns a Result.
+    /// # Examples
+    /// ```no_run
+    /// # use bft_types;
+    /// let filepath = std::path::Path::new("my_file.bf");
+    /// let prog: std::io::Result<bft_types::Program> = bft_types::Program::from_file(&filepath);
+    /// ```
     pub fn from_file(file: &Path) -> std::io::Result<Program> {
         // Load the text from the path, pass it into new.
         let mut text = String::new();
         BufReader::new(File::open(file)?).read_to_string(&mut text)?;
         Ok(Self::new(file, text))
     }
+    /// Converts a string into a brainfuck program.
+    /// # Examples
+    /// ```
+    /// # use bft_types;
+    /// let filename = std::path::Path::new("(no file)");
+    /// let text = "[,.]".to_string();
+    /// let prog: bft_types::Program = bft_types::Program::new(filename, text);
+    /// ```
     pub fn new(filename: &Path, text: String) -> Program {
         let mut instructions: Vec<PositionedInstruction> = Vec::new();
-        // Split the string into lines, split the line into characters, as iteration.
         for (line_index, line) in text.lines().enumerate() {
             for (char_index, byte) in line.bytes().enumerate() {
                 match RawInstruction::from_byte(byte) {
