@@ -4,7 +4,7 @@ use std::io::{BufReader, Read};
 use std::path::Path;
 use std::string::String;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum RawInstruction {
     IncrementDataPointer,
     DecrementDataPointer,
@@ -135,4 +135,36 @@ impl fmt::Display for Program {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn instructions_from_byte() {
+        let test_data = [
+            (b'<', Some(RawInstruction::DecrementDataPointer)),
+            (b'>', Some(RawInstruction::IncrementDataPointer)),
+            (b'+', Some(RawInstruction::IncrementByte)),
+            (b'-', Some(RawInstruction::DecrementByte)),
+            (b',', Some(RawInstruction::GetByte)),
+            (b'.', Some(RawInstruction::PutByte)),
+            (b'[', Some(RawInstruction::OpenLoop)),
+            (b']', Some(RawInstruction::CloseLoop)),
+            (b'*', None),
+        ];
+        for (input, output) in test_data {
+            assert_eq!(output, RawInstruction::from_byte(input));
+        }
+    }
+
+    #[test]
+    fn correct_position() {
+        let text = "[asdf
+ . +-
+]";
+        let results = [(1, 1), (2, 2), (2, 4), (2, 5), (3, 1)];
+        let prog = Program::new(Path::new("irrelevant_path"), text.to_string());
+        print!("{prog}");
+        for (index, instruction) in prog.instructions().iter().enumerate() {
+            assert_eq!(instruction.line(), results[index].0);
+            assert_eq!(instruction.character(), results[index].1);
+        }
+    }
 }
