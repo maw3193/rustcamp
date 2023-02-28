@@ -193,9 +193,11 @@ mod tests {
 
     #[test]
     fn correct_position() {
-        let text = "[asdf
- . +-
-]";
+        let text = [
+            "[asdf",
+            " . +-",
+            "]"
+        ].join("\n");
         let results = [(1, 1), (2, 2), (2, 4), (2, 5), (3, 1)];
         let prog = Program::new(Path::new("irrelevant_path"), text.to_string());
         print!("{prog}");
