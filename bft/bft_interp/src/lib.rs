@@ -22,6 +22,7 @@ where
         }
     }
 
+    // TODO: Take this out of the constrained impl block
     // Seems very redundant, will probably be replaced with something else later
     pub fn print_program(&self, prog: &Program) {
         print!("{prog}")

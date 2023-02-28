@@ -109,12 +109,15 @@ impl Program {
     /// let filepath = std::path::Path::new("my_file.bf");
     /// let prog: std::io::Result<bft_types::Program> = bft_types::Program::from_file(&filepath);
     /// ```
+    // TODO: Path to AsRef<Path>
+    // new<P: AsRef<Path>>(path: P)
     pub fn from_file(file: &Path) -> std::io::Result<Program> {
         // Load the text from the path, pass it into new.
         let mut text = String::new();
         BufReader::new(File::open(file)?).read_to_string(&mut text)?;
         Ok(Self::new(file, text))
     }
+
     /// Converts a string into a brainfuck program.
     /// # Examples
     /// ```
@@ -123,6 +126,7 @@ impl Program {
     /// let text = "[,.]".to_string();
     /// let prog: bft_types::Program = bft_types::Program::new(filename, text);
     /// ```
+    // TODO: Path as path-like, text as String-like (&str is enough, AsRef<str> if you're fancy)
     pub fn new(filename: &Path, text: String) -> Program {
         let mut instructions: Vec<PositionedInstruction> = Vec::new();
         for (line_index, line) in text.lines().enumerate() {
@@ -149,6 +153,8 @@ impl Program {
         &self.file
     }
 
+    // ???: Should I be doing DerefMut instead?
+    //      Is that smarter than default implementation borrow-borrow
     pub fn instructions(&self) -> &[PositionedInstruction] {
         &&self.instructions
     }
