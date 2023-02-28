@@ -1,0 +1,12 @@
+name: Rust checks
+on: push
+env:
+  RUSTFLAGS: "-Dwarnings"
+
+jobs:
+  clippy-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run Clippy
+        run: cd bft && cargo clippy --all-targets --all-features
