@@ -30,6 +30,9 @@ jobs:
         run: cd bft && cargo clippy --all-targets --all-features
   docs:
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     steps:
       - uses: actions/checkout@v3
       - name: Build Docs
