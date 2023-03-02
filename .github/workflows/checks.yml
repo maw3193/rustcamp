@@ -42,5 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Install Tarpaulin
+        run: cargo install cargo-tarpaulin
       - name: Run Tarpaulin
         run: cd bft && cargo tarpaulin --all
