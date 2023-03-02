@@ -51,8 +51,8 @@ where
         let cells = vec![Default::default(); size];
         Machine {
             head: 0,
-            cells: cells,
-            may_grow: may_grow,
+            cells,
+            may_grow,
         }
     }
 }

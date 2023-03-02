@@ -134,7 +134,7 @@ impl Program {
                 match RawInstruction::from_byte(byte) {
                     None => (),
                     Some(instruction) => instructions.push(PositionedInstruction {
-                        instruction: instruction,
+                        instruction,
                         line: line_index + 1,
                         character: char_index + 1,
                     }),
@@ -145,7 +145,7 @@ impl Program {
         // If I can read them I can print the closest I can to its representation.
         Program {
             file: String::from(filename.to_string_lossy()),
-            instructions: instructions,
+            instructions,
         }
     }
 
@@ -153,17 +153,15 @@ impl Program {
         &self.file
     }
 
-    // ???: Should I be doing DerefMut instead?
-    //      Is that smarter than default implementation borrow-borrow
     pub fn instructions(&self) -> &[PositionedInstruction] {
-        &&self.instructions
+        &self.instructions
     }
 }
 
 impl fmt::Display for Program {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for instruction in self.instructions() {
-            write!(f, "{}:{}\n", self.file(), instruction,)?
+            writeln!(f, "{}:{}", self.file(), instruction,)?
         }
         Ok(())
     }
