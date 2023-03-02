@@ -37,6 +37,8 @@ jobs:
       - uses: actions/checkout@v3
       - name: Build Docs
         run: cd bft && cargo doc --all
+      - name: Make index.html a link to help.html
+        run: cd bft/target/doc && ln -s help.html index.html
       - uses: actions/upload-artifact@v3
         with:
           name: rustdoc
