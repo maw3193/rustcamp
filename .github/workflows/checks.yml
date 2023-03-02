@@ -38,6 +38,13 @@ jobs:
         with:
           name: rustdoc
           path: bft/target/doc
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: bft/target/doc
+      - name: Deploy Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@v1
   coverage:
     runs-on: ubuntu-latest
     steps:
