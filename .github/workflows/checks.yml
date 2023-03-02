@@ -4,9 +4,43 @@ env:
   RUSTFLAGS: "-Dwarnings"
 
 jobs:
+  cargo-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run cargo check
+        run: cd bft && cargo check --all
+  fmt-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run cargo fmt
+        run: cd bft && cargo fmt --all --check
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run cargo fmt
+        run: cd bft && cargo test --all
   clippy-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Run Clippy
         run: cd bft && cargo clippy --all-targets --all-features
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build Docs
+        run: cd bft && cargo doc --all
+      - uses: actions/upload-artifact@v3
+        with:
+          name: rustdoc
+          path: bft/target/doc
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run Tarpaulin
+        run: cd bft && cargo tarpaulin --all
