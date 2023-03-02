@@ -14,8 +14,7 @@ pub struct Machine<T> {
     may_grow: bool,
 }
 
-impl<T> Machine<T>
-{
+impl<T> Machine<T> {
     pub fn print_program(&self, prog: &Program) {
         print!("{prog}")
     }
