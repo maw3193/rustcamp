@@ -102,7 +102,7 @@ impl Program {
     /// # Examples
     /// ```no_run
     /// # use bft_types;
-    /// let filepath = std::path::Path::new("my_file.bf");
+    /// let filepath = "my_file.bf";
     /// let prog: std::io::Result<bft_types::Program> = bft_types::Program::from_file(&filepath);
     /// ```
     // TODO: Path to AsRef<Path>
@@ -118,9 +118,9 @@ impl Program {
     /// # Examples
     /// ```
     /// # use bft_types;
-    /// let filename = std::path::Path::new("(no file)");
-    /// let text = "[,.]".to_string();
-    /// let prog: bft_types::Program = bft_types::Program::new(filename, text);
+    /// let filename = "(no file)";
+    /// let text = "[,.]";
+    /// let prog: bft_types::Program = bft_types::Program::new(&filename, &text);
     /// ```
     // NOTE: I tried to use the generic `U: AsRef<str> + BufRead>` but then text.lines() was fallible.
     pub fn new<T: AsRef<Path> + ToString>(filename: T, text: &str) -> Program {
