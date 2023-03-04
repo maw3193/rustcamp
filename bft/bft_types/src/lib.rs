@@ -127,13 +127,12 @@ impl Program {
         let mut instructions: Vec<PositionedInstruction> = Vec::new();
         for (line_index, line) in text.lines().enumerate() {
             for (char_index, byte) in line.bytes().enumerate() {
-                match RawInstruction::from_byte(byte) {
-                    None => (),
-                    Some(instruction) => instructions.push(PositionedInstruction {
+                if let Some(instruction) = RawInstruction::from_byte(byte) {
+                    instructions.push(PositionedInstruction {
                         instruction,
                         line: line_index + 1,
                         character: char_index + 1,
-                    }),
+                    });
                 }
             }
         }
