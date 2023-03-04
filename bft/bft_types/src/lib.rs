@@ -49,20 +49,16 @@ impl RawInstruction {
 
 impl fmt::Display for RawInstruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::IncrementDataPointer => "Increment current location",
-                Self::DecrementDataPointer => "Decrement current location",
-                Self::IncrementByte => "Increment the byte at the current location",
-                Self::DecrementByte => "Decrement the byte at the current location",
-                Self::PutByte => "Output the byte at the current location",
-                Self::GetByte => "Store a byte of input at the current location",
-                Self::OpenLoop => "Start looping",
-                Self::CloseLoop => "Stop looping",
-            }
-        )
+        f.write_str(match self {
+            Self::IncrementDataPointer => "Increment current location",
+            Self::DecrementDataPointer => "Decrement current location",
+            Self::IncrementByte => "Increment the byte at the current location",
+            Self::DecrementByte => "Decrement the byte at the current location",
+            Self::PutByte => "Output the byte at the current location",
+            Self::GetByte => "Store a byte of input at the current location",
+            Self::OpenLoop => "Start looping",
+            Self::CloseLoop => "Stop looping",
+        })
     }
 }
 
