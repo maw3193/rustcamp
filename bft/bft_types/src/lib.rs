@@ -111,11 +111,11 @@ impl Program {
     /// ```
     // TODO: Path to AsRef<Path>
     // new<P: AsRef<Path>>(path: P)
-    pub fn from_file(file: &Path) -> std::io::Result<Program> {
+    pub fn from_file<T: AsRef<Path> + ToString + Copy>(file: T) -> std::io::Result<Program> {
         // Load the text from the path, pass it into new.
         let mut text = String::new();
         BufReader::new(File::open(file)?).read_to_string(&mut text)?;
-        Ok(Self::new(file, text))
+        Ok(Self::new(file, &text))
     }
 
     /// Converts a string into a brainfuck program.
@@ -126,8 +126,8 @@ impl Program {
     /// let text = "[,.]".to_string();
     /// let prog: bft_types::Program = bft_types::Program::new(filename, text);
     /// ```
-    // TODO: Path as path-like, text as String-like (&str is enough, AsRef<str> if you're fancy)
-    pub fn new(filename: &Path, text: String) -> Program {
+    // NOTE: I tried to use the generic `U: AsRef<str> + BufRead>` but then text.lines() was fallible.
+    pub fn new<T: AsRef<Path> + ToString>(filename: T, text: &str) -> Program {
         let mut instructions: Vec<PositionedInstruction> = Vec::new();
         for (line_index, line) in text.lines().enumerate() {
             for (char_index, byte) in line.bytes().enumerate() {
@@ -144,7 +144,7 @@ impl Program {
         // non-utf8 characters may be valid paths to readable files so I oughtn't to reject parsing them.
         // If I can read them I can print the closest I can to its representation.
         Program {
-            file: String::from(filename.to_string_lossy()),
+            file: filename.to_string(),
             instructions,
         }
     }
@@ -193,7 +193,7 @@ mod tests {
     fn correct_position() {
         let text = ["[asdf", " . +-", "]"].join("\n");
         let results = [(1, 1), (2, 2), (2, 4), (2, 5), (3, 1)];
-        let prog = Program::new(Path::new("irrelevant_path"), text.to_string());
+        let prog = Program::new("irrelevant_path", &text);
         print!("{prog}");
         for (index, instruction) in prog.instructions().iter().enumerate() {
             assert_eq!(instruction.line(), results[index].0);
