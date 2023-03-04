@@ -191,7 +191,12 @@ mod tests {
 
     #[test]
     fn correct_position() {
-        let text = ["[asdf", " . +-", "]"].join("\n");
+        #[rustfmt::skip]
+        let text = [
+            "[asdf",
+            " . +-",
+            "]"
+        ].join("\n");
         let results = [(1, 1), (2, 2), (2, 4), (2, 5), (3, 1)];
         let prog = Program::new("irrelevant_path", &text);
         print!("{prog}");
