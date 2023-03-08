@@ -1,6 +1,8 @@
 //! Brainfuck interpreter library
 //! An implementation of the brainfuck virtual machine
 
+use std::num::NonZeroUsize;
+
 use bft_types::Program;
 
 /// A brainfuck virtual machine
@@ -41,12 +43,13 @@ where
     /// # Examples
     /// ```
     /// # use bft_interp;
-    /// let mut interp: bft_interp::Machine<u8> = bft_interp::Machine::new(0, false);
+    /// let mut interp: bft_interp::Machine<u8> = bft_interp::Machine::new(None, false);
     /// ```
-    pub fn new(mut size: usize, may_grow: bool) -> Machine<T> {
-        if size == 0 {
-            size = 30000;
-        }
+    pub fn new(size: Option<NonZeroUsize>, may_grow: bool) -> Machine<T> {
+        let size = match size {
+            None => 30000,
+            Some(sz) => sz.into(),
+        };
         let cells = vec![Default::default(); size];
         Machine {
             head: 0,
