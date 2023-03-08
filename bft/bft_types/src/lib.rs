@@ -4,7 +4,7 @@
 use std::fmt;
 use std::fs::File;
 use std::io::{BufReader, Read};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::string::String;
 
 /// An enum of every possible instruction Brainfuck can execute
@@ -92,7 +92,7 @@ impl fmt::Display for PositionedInstruction {
 /// A collection of all the brainfuck instructions within a single source file
 #[derive(Debug)]
 pub struct Program {
-    file: String,
+    file: PathBuf,
     instructions: Vec<PositionedInstruction>,
 }
 
@@ -107,7 +107,7 @@ impl Program {
     /// ```
     // TODO: Path to AsRef<Path>
     // new<P: AsRef<Path>>(path: P)
-    pub fn from_file<T: AsRef<Path> + ToString + Copy>(file: T) -> std::io::Result<Program> {
+    pub fn from_file<T: AsRef<Path> + Copy + Into<PathBuf>>(file: T) -> std::io::Result<Program> {
         // Load the text from the path, pass it into new.
         let mut text = String::new();
         BufReader::new(File::open(file)?).read_to_string(&mut text)?;
@@ -123,7 +123,7 @@ impl Program {
     /// let prog: bft_types::Program = bft_types::Program::new(&filename, &text);
     /// ```
     // NOTE: I tried to use the generic `U: AsRef<str> + BufRead>` but then text.lines() was fallible.
-    pub fn new<T: AsRef<Path> + ToString>(filename: T, text: &str) -> Program {
+    pub fn new<T: AsRef<Path> + Into<PathBuf>>(filename: T, text: &str) -> Program {
         let mut instructions: Vec<PositionedInstruction> = Vec::new();
         for (line_index, line) in text.lines().enumerate() {
             for (char_index, byte) in line.bytes().enumerate() {
@@ -139,12 +139,12 @@ impl Program {
         // non-utf8 characters may be valid paths to readable files so I oughtn't to reject parsing them.
         // If I can read them I can print the closest I can to its representation.
         Program {
-            file: filename.to_string(),
+            file: filename.into(),
             instructions,
         }
     }
 
-    pub fn file(&self) -> &str {
+    pub fn file(&self) -> &PathBuf {
         &self.file
     }
 
@@ -156,7 +156,7 @@ impl Program {
 impl fmt::Display for Program {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for instruction in self.instructions() {
-            writeln!(f, "{}:{}", self.file(), instruction,)?
+            writeln!(f, "{}:{}", self.file().to_string_lossy(), instruction,)?
         }
         Ok(())
     }
