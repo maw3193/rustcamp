@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 bft_interp = { version = "0.1.0", path = "bft_interp" }
 bft_types = { version = "0.1.0", path = "bft_types" }
+clap = { version = "4.1.8", features = ["derive"] }
 
 [workspace]
 members = [  
