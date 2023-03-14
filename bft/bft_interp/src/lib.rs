@@ -3,7 +3,7 @@
 
 use std::num::NonZeroUsize;
 
-use bft_types::Program;
+use bft_types::{DecoratedProgram, ParseError, Program};
 
 /// A brainfuck virtual machine
 /// The type T is the type that all brainfuck cells will be.
@@ -31,6 +31,17 @@ impl<T> Machine<T> {
 
     pub fn may_grow(&self) -> bool {
         self.may_grow
+    }
+
+    /// Checks whether a provided program is valid Brainfuck code
+    ///
+    /// As it's a very thin wrapper around DecoratedProgram::from_program,
+    /// see that for examples of how this is used.
+    pub fn validate(&self, prog: &Program) -> Result<(), ParseError> {
+        // Reuse existing parsing logic, throwing away the success
+        // and propagating any errors
+        DecoratedProgram::from_program(prog)?;
+        Ok(())
     }
 }
 

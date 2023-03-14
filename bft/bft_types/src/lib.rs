@@ -6,9 +6,10 @@ use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
 use std::string::String;
+use thiserror::Error;
 
 /// An enum of every possible instruction Brainfuck can execute
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum RawInstruction {
     IncrementDataPointer,
     DecrementDataPointer,
@@ -63,7 +64,7 @@ impl fmt::Display for RawInstruction {
 }
 
 /// A brainfuck instruction with added context of where it exists within the codebase
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PositionedInstruction {
     instruction: RawInstruction,
     line: usize,
@@ -89,6 +90,137 @@ impl fmt::Display for PositionedInstruction {
         write!(f, "{}:{} {}", self.line, self.character, self.instruction)
     }
 }
+/// Instructions that have been processed into a form useful to an interpreter
+pub enum DecoratedInstruction {
+    /// A loop has been opened. In addition, here is where it will close
+    OpenLoop {
+        instruction: PositionedInstruction,
+        closer: PositionedInstruction,
+        closer_index: usize,
+    },
+    /// A loop has been closed. In addition, here is where it was opened
+    CloseLoop {
+        instruction: PositionedInstruction,
+        opener: PositionedInstruction,
+        opener_index: usize,
+    },
+    /// An ordinary instruction that can be used as-is
+    Instruction(PositionedInstruction),
+    /// An open-bracket instruction that gets replaced when the loop is closed
+    ///
+    /// This is expected to only exist as a temporary implementation detail.
+    PlaceholderOpenBracket,
+}
+
+/// A program that's been processed into a form useful to an interpreter
+/// Compared to a Program, this has the additional constraint that the code must be valid Brainfuck.
+pub struct DecoratedProgram {
+    file: PathBuf,
+    decorated_instructions: Vec<DecoratedInstruction>,
+}
+
+/// Errors that may occur while parsing a Brainfuck program.
+#[derive(Debug, Error)]
+pub enum ParseError {
+    /// A bracket was opened, but never closed
+    UnopenedBracket { closer: PositionedInstruction },
+    /// A closing bracket was found before an opening bracket
+    UnclosedBracket { opener: PositionedInstruction },
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::UnopenedBracket { closer } => {
+                write!(f, "{closer} closed a loop with no matching opener")
+            }
+            Self::UnclosedBracket { opener } => {
+                write!(f, "{opener} opened a loop that wasn't closed")
+            }
+        }
+    }
+}
+
+impl DecoratedProgram {
+    /// Parses a Program, returning either a validated Brainfuck program, or the reason why it's invalid
+    /// # Examples
+    /// ```
+    /// # use bft_types;
+    /// let code = "[+++.]";
+    /// let raw_prog = bft_types::Program::new("<Test program>", code);
+    /// assert!(bft_types::DecoratedProgram::from_program(&raw_prog).is_ok());
+    /// ```
+    /// ```
+    /// # use bft_types;
+    /// let code = "[+++.";
+    /// let raw_prog = bft_types::Program::new("<Test program>", code);
+    /// assert!(bft_types::DecoratedProgram::from_program(&raw_prog).is_err());
+    /// ```
+    /// ```
+    /// # use bft_types;
+    /// let code = "[+++.]]";
+    /// let raw_prog = bft_types::Program::new("<Test program>", code);
+    /// assert!(bft_types::DecoratedProgram::from_program(&raw_prog).is_err());
+    /// ```
+    pub fn from_program(prog: &Program) -> Result<DecoratedProgram, ParseError> {
+        let mut bracket_stack = Vec::new();
+        let mut decorated_instructions: Vec<DecoratedInstruction> = Vec::new();
+        for (index, instruction) in prog.instructions().iter().enumerate() {
+            match instruction.instruction() {
+                RawInstruction::OpenLoop => {
+                    bracket_stack.push((index, instruction));
+
+                    decorated_instructions.push(DecoratedInstruction::PlaceholderOpenBracket);
+                }
+                RawInstruction::CloseLoop => {
+                    let opener = bracket_stack.pop();
+                    if opener.is_none() {
+                        return Err(ParseError::UnopenedBracket {
+                            closer: instruction.clone(),
+                        });
+                    };
+                    // Now that we've closed the loop, go back and decorate the opener.
+                    decorated_instructions[opener.unwrap().0] = DecoratedInstruction::OpenLoop {
+                        instruction: opener.unwrap().1.clone(),
+                        closer: instruction.clone(),
+                        closer_index: index,
+                    };
+
+                    decorated_instructions.push(DecoratedInstruction::CloseLoop {
+                        instruction: instruction.clone(),
+                        opener: opener.unwrap().1.clone(),
+                        opener_index: opener.unwrap().0,
+                    });
+                }
+                _ => decorated_instructions
+                    .push(DecoratedInstruction::Instruction(instruction.clone())),
+            };
+        }
+        if !bracket_stack.is_empty() {
+            return Err(ParseError::UnclosedBracket {
+                opener: bracket_stack.pop().unwrap().1.clone(),
+            });
+        };
+
+        // Double-check I haven't left placeholders lying around
+        // NOTE: Used a match for lack of a better way of comparing an enum
+        assert!(decorated_instructions.iter().all(|i| !matches!(i, DecoratedInstruction::PlaceholderOpenBracket)));
+
+        Ok(DecoratedProgram {
+            file: prog.file().clone(),
+            decorated_instructions,
+        })
+    }
+
+    pub fn file(&self) -> &PathBuf {
+        &self.file
+    }
+
+    pub fn decorated_instructions(&self) -> &[DecoratedInstruction] {
+        self.decorated_instructions.as_ref()
+    }
+}
+
 /// A collection of all the brainfuck instructions within a single source file
 #[derive(Debug)]
 pub struct Program {
