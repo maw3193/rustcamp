@@ -123,19 +123,43 @@ pub struct DecoratedProgram {
 #[derive(Debug, Error)]
 pub enum ParseError {
     /// A bracket was opened, but never closed
-    UnopenedBracket { closer: PositionedInstruction, source_file: PathBuf },
+    UnopenedBracket {
+        closer: PositionedInstruction,
+        source_file: PathBuf,
+    },
     /// A closing bracket was found before an opening bracket
-    UnclosedBracket { opener: PositionedInstruction, source_file: PathBuf },
+    UnclosedBracket {
+        opener: PositionedInstruction,
+        source_file: PathBuf,
+    },
 }
 
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::UnopenedBracket { closer, source_file } => {
-                write!(f, "In input file {}, closed a loop with no matching opener at line {}, column {}", source_file.to_string_lossy(), closer.line(), closer.character())
+            Self::UnopenedBracket {
+                closer,
+                source_file,
+            } => {
+                write!(
+                    f,
+                    "In input file {}, closed a loop with no matching opener at line {}, column {}",
+                    source_file.to_string_lossy(),
+                    closer.line(),
+                    closer.character()
+                )
             }
-            Self::UnclosedBracket { opener, source_file } => {
-                write!(f, "In input file {}, opened a loop that wasn't closed at line {}, column {}", source_file.to_string_lossy(), opener.line(), opener.character())
+            Self::UnclosedBracket {
+                opener,
+                source_file,
+            } => {
+                write!(
+                    f,
+                    "In input file {}, opened a loop that wasn't closed at line {}, column {}",
+                    source_file.to_string_lossy(),
+                    opener.line(),
+                    opener.character()
+                )
             }
         }
     }
@@ -206,7 +230,9 @@ impl DecoratedProgram {
 
         // Double-check I haven't left placeholders lying around
         // NOTE: Used a match for lack of a better way of comparing an enum
-        assert!(decorated_instructions.iter().all(|i| !matches!(i, DecoratedInstruction::PlaceholderOpenBracket)));
+        assert!(decorated_instructions
+            .iter()
+            .all(|i| !matches!(i, DecoratedInstruction::PlaceholderOpenBracket)));
 
         Ok(DecoratedProgram {
             file: prog.file().clone(),

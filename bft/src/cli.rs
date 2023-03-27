@@ -1,5 +1,5 @@
-use std::{num::NonZeroUsize, path::PathBuf};
 use clap::Parser;
+use std::{num::NonZeroUsize, path::PathBuf};
 
 use bft_interp::Machine;
 use bft_types::Program;
