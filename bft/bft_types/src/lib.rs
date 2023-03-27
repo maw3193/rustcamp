@@ -123,19 +123,19 @@ pub struct DecoratedProgram {
 #[derive(Debug, Error)]
 pub enum ParseError {
     /// A bracket was opened, but never closed
-    UnopenedBracket { closer: PositionedInstruction },
+    UnopenedBracket { closer: PositionedInstruction, source_file: PathBuf },
     /// A closing bracket was found before an opening bracket
-    UnclosedBracket { opener: PositionedInstruction },
+    UnclosedBracket { opener: PositionedInstruction, source_file: PathBuf },
 }
 
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::UnopenedBracket { closer } => {
-                write!(f, "{closer} closed a loop with no matching opener")
+            Self::UnopenedBracket { closer, source_file } => {
+                write!(f, "In input file {}, closed a loop with no matching opener at line {}, column {}", source_file.to_string_lossy(), closer.line(), closer.character())
             }
-            Self::UnclosedBracket { opener } => {
-                write!(f, "{opener} opened a loop that wasn't closed")
+            Self::UnclosedBracket { opener, source_file } => {
+                write!(f, "In input file {}, opened a loop that wasn't closed at line {}, column {}", source_file.to_string_lossy(), opener.line(), opener.character())
             }
         }
     }
@@ -177,6 +177,7 @@ impl DecoratedProgram {
                     if opener.is_none() {
                         return Err(ParseError::UnopenedBracket {
                             closer: instruction.clone(),
+                            source_file: prog.file().clone(),
                         });
                     };
                     // Now that we've closed the loop, go back and decorate the opener.
@@ -199,6 +200,7 @@ impl DecoratedProgram {
         if !bracket_stack.is_empty() {
             return Err(ParseError::UnclosedBracket {
                 opener: bracket_stack.pop().unwrap().1.clone(),
+                source_file: prog.file().clone(),
             });
         };
 
