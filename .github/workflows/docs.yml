@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Build Docs
-        run: cd bft && cargo doc --all
+        run: cd bft && cargo doc --all --no-deps
       - name: Make index.html a link to help.html
         run: cd bft/target/doc && ln -s help.html index.html
       - name: Upload Pages artifact
