@@ -9,7 +9,7 @@ use std::string::String;
 use thiserror::Error;
 
 /// An enum of every possible instruction Brainfuck can execute
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum RawInstruction {
     IncrementDataPointer,
     DecrementDataPointer,
@@ -64,7 +64,7 @@ impl fmt::Display for RawInstruction {
 }
 
 /// A brainfuck instruction with added context of where it exists within the codebase
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct PositionedInstruction {
     instruction: RawInstruction,
     line: usize,
@@ -200,31 +200,30 @@ impl DecoratedProgram {
                     let opener = bracket_stack.pop();
                     if opener.is_none() {
                         return Err(ParseError::UnopenedBracket {
-                            closer: instruction.clone(),
-                            source_file: prog.file().clone(),
+                            closer: *instruction,
+                            source_file: prog.file().to_path_buf(),
                         });
                     };
                     // Now that we've closed the loop, go back and decorate the opener.
                     decorated_instructions[opener.unwrap().0] = DecoratedInstruction::OpenLoop {
-                        instruction: opener.unwrap().1.clone(),
-                        closer: instruction.clone(),
+                        instruction: *(opener.unwrap().1),
+                        closer: *instruction,
                         closer_index: index,
                     };
 
                     decorated_instructions.push(DecoratedInstruction::CloseLoop {
-                        instruction: instruction.clone(),
-                        opener: opener.unwrap().1.clone(),
+                        instruction: *instruction,
+                        opener: *(opener.unwrap().1),
                         opener_index: opener.unwrap().0,
                     });
                 }
-                _ => decorated_instructions
-                    .push(DecoratedInstruction::Instruction(instruction.clone())),
+                _ => decorated_instructions.push(DecoratedInstruction::Instruction(*instruction)),
             };
         }
         if !bracket_stack.is_empty() {
             return Err(ParseError::UnclosedBracket {
-                opener: bracket_stack.pop().unwrap().1.clone(),
-                source_file: prog.file().clone(),
+                opener: *(bracket_stack.pop().unwrap().1),
+                source_file: prog.file().to_path_buf(),
             });
         };
 
@@ -235,12 +234,12 @@ impl DecoratedProgram {
             .all(|i| !matches!(i, DecoratedInstruction::PlaceholderOpenBracket)));
 
         Ok(DecoratedProgram {
-            file: prog.file().clone(),
+            file: prog.file().to_path_buf(),
             decorated_instructions,
         })
     }
 
-    pub fn file(&self) -> &PathBuf {
+    pub fn file(&self) -> &Path {
         &self.file
     }
 
@@ -265,12 +264,11 @@ impl Program {
     /// let filepath = "my_file.bf";
     /// let prog: std::io::Result<bft_types::Program> = bft_types::Program::from_file(&filepath);
     /// ```
-    // TODO: Path to AsRef<Path>
-    // new<P: AsRef<Path>>(path: P)
-    pub fn from_file<T: AsRef<Path> + Copy + Into<PathBuf>>(file: T) -> std::io::Result<Program> {
+    pub fn from_file<T: AsRef<Path>>(file: T) -> std::io::Result<Program> {
+        let file: PathBuf = file.as_ref().to_path_buf();
         // Load the text from the path, pass it into new.
         let mut text = String::new();
-        BufReader::new(File::open(file)?).read_to_string(&mut text)?;
+        BufReader::new(File::open(&file)?).read_to_string(&mut text)?;
         Ok(Self::new(file, &text))
     }
 
@@ -282,8 +280,7 @@ impl Program {
     /// let text = "[,.]";
     /// let prog: bft_types::Program = bft_types::Program::new(&filename, &text);
     /// ```
-    // NOTE: I tried to use the generic `U: AsRef<str> + BufRead>` but then text.lines() was fallible.
-    pub fn new<T: AsRef<Path> + Into<PathBuf>>(filename: T, text: &str) -> Program {
+    pub fn new<T: AsRef<Path>>(filename: T, text: &str) -> Program {
         let mut instructions: Vec<PositionedInstruction> = Vec::new();
         for (line_index, line) in text.lines().enumerate() {
             for (char_index, byte) in line.bytes().enumerate() {
@@ -296,15 +293,13 @@ impl Program {
                 }
             }
         }
-        // non-utf8 characters may be valid paths to readable files so I oughtn't to reject parsing them.
-        // If I can read them I can print the closest I can to its representation.
         Program {
-            file: filename.into(),
+            file: filename.as_ref().to_path_buf(),
             instructions,
         }
     }
 
-    pub fn file(&self) -> &PathBuf {
+    pub fn file(&self) -> &Path {
         &self.file
     }
 
@@ -316,7 +311,7 @@ impl Program {
 impl fmt::Display for Program {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for instruction in self.instructions() {
-            writeln!(f, "{}:{}", self.file().to_string_lossy(), instruction,)?
+            writeln!(f, "{}:{}", self.file().display(), instruction,)?
         }
         Ok(())
     }
