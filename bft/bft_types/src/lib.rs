@@ -96,13 +96,11 @@ pub enum DecoratedInstruction {
     OpenLoop {
         instruction: PositionedInstruction,
         closer: PositionedInstruction,
-        closer_index: usize,
     },
     /// A loop has been closed. In addition, here is where it was opened
     CloseLoop {
         instruction: PositionedInstruction,
         opener: PositionedInstruction,
-        opener_index: usize,
     },
     /// An ordinary instruction that can be used as-is
     Instruction(PositionedInstruction),
@@ -208,13 +206,11 @@ impl DecoratedProgram {
                     decorated_instructions[opener.unwrap().0] = DecoratedInstruction::OpenLoop {
                         instruction: *(opener.unwrap().1),
                         closer: *instruction,
-                        closer_index: index,
                     };
 
                     decorated_instructions.push(DecoratedInstruction::CloseLoop {
                         instruction: *instruction,
                         opener: *(opener.unwrap().1),
-                        opener_index: opener.unwrap().0,
                     });
                 }
                 _ => decorated_instructions.push(DecoratedInstruction::Instruction(*instruction)),
@@ -228,7 +224,6 @@ impl DecoratedProgram {
         };
 
         // Double-check I haven't left placeholders lying around
-        // NOTE: Used a match for lack of a better way of comparing an enum
         assert!(decorated_instructions
             .iter()
             .all(|i| !matches!(i, DecoratedInstruction::PlaceholderOpenBracket)));
