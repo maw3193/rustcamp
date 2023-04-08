@@ -16,6 +16,7 @@ name = "bft_interp"
 version = "0.1.0"
 dependencies = [
  "bft_types",
+ "thiserror",
 ]
 
 [[package]]

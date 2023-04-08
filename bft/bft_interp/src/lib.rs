@@ -3,22 +3,25 @@
 
 use std::num::NonZeroUsize;
 
-use bft_types::{DecoratedProgram, ParseError, Program};
+use bft_types::{DecoratedProgram, PositionedInstruction};
+
+use thiserror::Error;
 
 /// A brainfuck virtual machine
 /// The type T is the type that all brainfuck cells will be.
 /// The machine is initialised with a specific number of cells, and may
 /// allocate more cells when the head extends beyond the end of memory if
 /// configured to do so.
-pub struct Machine<T> {
+pub struct Machine<'a, T> {
     cells: Vec<T>,
     head: usize,
     may_grow: bool,
+    prog: &'a DecoratedProgram,
 }
 
-impl<T> Machine<T> {
-    pub fn print_program(&self, prog: &Program) {
-        print!("{prog}")
+impl<'a, T> Machine<'a, T> {
+    pub fn print_program(&self) {
+        print!("{}", self.prog)
     }
 
     pub fn cells(&self) -> &[T] {
@@ -33,19 +36,12 @@ impl<T> Machine<T> {
         self.may_grow
     }
 
-    /// Checks whether a provided program is valid Brainfuck code
-    ///
-    /// As it's a very thin wrapper around DecoratedProgram::from_program,
-    /// see that for examples of how this is used.
-    pub fn validate(&self, prog: &Program) -> Result<(), ParseError> {
-        // Reuse existing parsing logic, throwing away the success
-        // and propagating any errors
-        DecoratedProgram::from_program(prog)?;
-        Ok(())
+    pub fn prog(&self) -> &'a DecoratedProgram {
+        self.prog
     }
 }
 
-impl<T> Machine<T>
+impl<'a, T> Machine<'a, T>
 where
     T: std::clone::Clone + Default,
 {
@@ -54,9 +50,17 @@ where
     /// # Examples
     /// ```
     /// # use bft_interp;
-    /// let mut interp: bft_interp::Machine<u8> = bft_interp::Machine::new(None, false);
+    /// # use bft_types;
+    /// let prog: bft_types::DecoratedProgram = bft_types::DecoratedProgram::from_program(
+    ///     &bft_types::Program::new("<None>", "[,.]")
+    /// ).unwrap();
+    /// let mut interp: bft_interp::Machine<u8> = bft_interp::Machine::new(None, false, &prog);
     /// ```
-    pub fn new(size: Option<NonZeroUsize>, may_grow: bool) -> Machine<T> {
+    pub fn new(
+        size: Option<NonZeroUsize>,
+        may_grow: bool,
+        prog: &'a DecoratedProgram,
+    ) -> Machine<'a, T> {
         let size = match size {
             None => 30000,
             Some(sz) => sz.into(),
@@ -66,6 +70,15 @@ where
             head: 0,
             cells,
             may_grow,
+            prog,
         }
     }
+}
+
+#[derive(Error, Debug)]
+pub enum VMError {
+    #[error("Instruction {0} tried to seek to a negative head position")]
+    SeekTooLow(PositionedInstruction),
+    #[error("Instruction {0} tried to seek beyond the end of the cells and the cells aren't permitted to grow")]
+    SeekTooHigh(PositionedInstruction),
 }
