@@ -103,7 +103,7 @@ impl<'a, T> Machine<'a, T> {
 
 impl<'a, T> Machine<'a, T>
 where
-    T: std::clone::Clone + Default,
+    T: CellKind,
 {
     /// Creates a new virtual machine of the specified size, type, and whether it can grow.
     /// If `size` is set to 0, it will choose the default, 30000.
@@ -187,12 +187,65 @@ where
         self.head += 1;
         Ok(())
     }
+
+    /// Increase the value of the cell at the data pointer
+    ///
+    /// # Examples
+    /// ```
+    /// # use bft_interp;
+    /// # use bft_types;
+    /// let prog: bft_types::DecoratedProgram = bft_types::DecoratedProgram::from_program(
+    ///     &bft_types::Program::new("<None>", "[,.]")
+    /// ).unwrap();
+    /// let mut interp: bft_interp::Machine<u8> = bft_interp::Machine::new(None, false, &prog);
+    /// assert_eq!(interp.cells()[0], 0);
+    /// interp.increment_cell();
+    /// assert_eq!(interp.cells()[0], 1);
+    /// ```
+    pub fn increment_cell(&mut self) {
+        self.cells[self.head].increment()
+    }
+
+    /// Decrease the value of the cell at the data pointer
+    ///
+    /// # Examples
+    /// ```
+    /// # use bft_interp;
+    /// # use bft_types;
+    /// let prog: bft_types::DecoratedProgram = bft_types::DecoratedProgram::from_program(
+    ///     &bft_types::Program::new("<None>", "[,.]")
+    /// ).unwrap();
+    /// let mut interp: bft_interp::Machine<u8> = bft_interp::Machine::new(None, false, &prog);
+    /// assert_eq!(interp.cells()[0], 0);
+    /// interp.decrement_cell();
+    /// assert_eq!(interp.cells()[0], 255);
+    /// ```
+    pub fn decrement_cell(&mut self) {
+        self.cells[self.head].decrement()
+    }
 }
 
+/// Runtime errors in the interpreter
 #[derive(Error, Debug)]
 pub enum VMError {
     #[error("Instruction {0} tried to seek to a negative head position")]
     SeekTooLow(PositionedInstruction),
     #[error("Instruction {0} tried to seek beyond the end of the cells and the cells aren't permitted to grow")]
     SeekTooHigh(PositionedInstruction),
+}
+
+pub trait CellKind: std::clone::Clone + Default {
+    /// Increase the value of the cell by 1
+    fn increment(&mut self);
+    /// Decrease the value of the cell by 1
+    fn decrement(&mut self);
+}
+
+impl CellKind for u8 {
+    fn increment(&mut self) {
+        *self = self.wrapping_add(1)
+    }
+    fn decrement(&mut self) {
+        *self = self.wrapping_sub(1)
+    }
 }
