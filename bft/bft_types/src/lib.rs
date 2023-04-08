@@ -110,11 +110,36 @@ pub enum DecoratedInstruction {
     PlaceholderOpenBracket,
 }
 
+impl fmt::Display for DecoratedInstruction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        assert!(!matches!(self, Self::PlaceholderOpenBracket));
+        write!(
+            f,
+            "{}",
+            (match self {
+                Self::OpenLoop { instruction, .. } => instruction,
+                Self::CloseLoop { instruction, .. } => instruction,
+                Self::Instruction(instruction) => instruction,
+                Self::PlaceholderOpenBracket => unreachable!(),
+            })
+        )
+    }
+}
+
 /// A program that's been processed into a form useful to an interpreter
 /// Compared to a Program, this has the additional constraint that the code must be valid Brainfuck.
 pub struct DecoratedProgram {
     file: PathBuf,
     decorated_instructions: Vec<DecoratedInstruction>,
+}
+
+impl fmt::Display for DecoratedProgram {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for instruction in self.decorated_instructions() {
+            writeln!(f, "{}:{}", self.file().display(), instruction,)?
+        }
+        Ok(())
+    }
 }
 
 /// Errors that may occur while parsing a Brainfuck program.
