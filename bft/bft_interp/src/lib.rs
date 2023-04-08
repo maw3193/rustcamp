@@ -1,6 +1,7 @@
 //! Brainfuck interpreter library
 //! An implementation of the brainfuck virtual machine
 
+use std::io::Read;
 use std::num::NonZeroUsize;
 
 use bft_types::{DecoratedInstruction, DecoratedProgram, PositionedInstruction};
@@ -223,6 +224,51 @@ where
     pub fn decrement_cell(&mut self) {
         self.cells[self.head].decrement()
     }
+
+    /// Read a value from `file` into memory at the memory pointer
+    ///
+    /// If an I/O Error occurs while trying to read the file, it returns that error wrapped inside a VMError.
+    ///
+    /// Because I couldn't think of what brainfuck should do if it ever runs out of bytes reading stdin, it also
+    /// errors if zero bytes are read.
+    ///
+    /// # Examples
+    /// ```
+    /// # use bft_interp;
+    /// # use bft_types;
+    /// let prog: bft_types::DecoratedProgram = bft_types::DecoratedProgram::from_program(
+    ///     &bft_types::Program::new("<None>", "[,.]")
+    /// ).unwrap();
+    /// let mut interp: bft_interp::Machine<u8> = bft_interp::Machine::new(None, false, &prog);
+    /// let mut data = std::io::Cursor::new(vec![7]);
+    /// interp.read_value(&mut data);
+    /// assert_eq!(interp.cells()[0], 7);
+    /// ```
+    /// TODO: More examples?
+    pub fn read_value(&mut self, file: &mut impl Read) -> Result<(), VMError> {
+        let mut buffer: [u8; 1] = [0; 1];
+        match file.read(&mut buffer) {
+            Ok(bytes_read) => {
+                if bytes_read == 0 {
+                    // This *could* just mean "end of file", but I don't know what brainfuck should do in that case
+                    Err(VMError::IOError {
+                        instruction: self.current_instruction().instruction(),
+                        source: std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            "Unexpected zero bytes read",
+                        ),
+                    })
+                } else {
+                    self.cells[self.head].set_value(buffer[0]);
+                    Ok(())
+                }
+            }
+            Err(ioerror) => Err(VMError::IOError {
+                instruction: self.current_instruction().instruction(),
+                source: ioerror,
+            }),
+        }
+    }
 }
 
 /// Runtime errors in the interpreter
@@ -232,6 +278,11 @@ pub enum VMError {
     SeekTooLow(PositionedInstruction),
     #[error("Instruction {0} tried to seek beyond the end of the cells and the cells aren't permitted to grow")]
     SeekTooHigh(PositionedInstruction),
+    #[error("An I/O Error occurred while processing instruction {instruction}")]
+    IOError {
+        instruction: PositionedInstruction,
+        source: std::io::Error,
+    },
 }
 
 pub trait CellKind: std::clone::Clone + Default {
@@ -239,6 +290,10 @@ pub trait CellKind: std::clone::Clone + Default {
     fn increment(&mut self);
     /// Decrease the value of the cell by 1
     fn decrement(&mut self);
+    /// Sets the cell's value to the given value
+    ///
+    /// Note that the value is a u8 because brainfuck only reads single bytes from stdin
+    fn set_value(&mut self, value: u8);
 }
 
 impl CellKind for u8 {
@@ -247,5 +302,9 @@ impl CellKind for u8 {
     }
     fn decrement(&mut self) {
         *self = self.wrapping_sub(1)
+    }
+
+    fn set_value(&mut self, value: u8) {
+        *self = value
     }
 }
