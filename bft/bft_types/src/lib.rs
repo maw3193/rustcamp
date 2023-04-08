@@ -91,6 +91,7 @@ impl fmt::Display for PositionedInstruction {
     }
 }
 /// Instructions that have been processed into a form useful to an interpreter
+#[derive(Clone, Copy)]
 pub enum DecoratedInstruction {
     /// A loop has been opened. In addition, here is where it will close
     OpenLoop {
@@ -110,19 +111,24 @@ pub enum DecoratedInstruction {
     PlaceholderOpenBracket,
 }
 
+impl DecoratedInstruction {
+    pub fn instruction(&self) -> PositionedInstruction {
+        // :-/ That placeholder variant sure is a nuisance!
+        assert!(!matches!(self, Self::PlaceholderOpenBracket));
+
+        match self {
+            Self::OpenLoop { instruction, .. } => *instruction,
+            Self::CloseLoop { instruction, .. } => *instruction,
+            Self::Instruction(instruction) => *instruction,
+            Self::PlaceholderOpenBracket => unreachable!(),
+        }
+    }
+}
+
 impl fmt::Display for DecoratedInstruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         assert!(!matches!(self, Self::PlaceholderOpenBracket));
-        write!(
-            f,
-            "{}",
-            (match self {
-                Self::OpenLoop { instruction, .. } => instruction,
-                Self::CloseLoop { instruction, .. } => instruction,
-                Self::Instruction(instruction) => instruction,
-                Self::PlaceholderOpenBracket => unreachable!(),
-            })
-        )
+        write!(f, "{}", self.instruction())
     }
 }
 
