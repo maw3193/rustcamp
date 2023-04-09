@@ -1,7 +1,7 @@
 //! Brainfuck interpreter library
 //! An implementation of the brainfuck virtual machine
 
-use std::io::Read;
+use std::io::{Read, Write};
 use std::num::NonZeroUsize;
 
 use bft_types::{DecoratedInstruction, DecoratedProgram, PositionedInstruction};
@@ -227,7 +227,7 @@ where
 
     /// Read a value from `file` into memory at the memory pointer
     ///
-    /// If an I/O Error occurs while trying to read the file, it returns that error wrapped inside a VMError.
+    /// If an I/O Error occurs while trying to read the file, it returns that error wrapped inside a [VMError].
     ///
     /// Because I couldn't think of what brainfuck should do if it ever runs out of bytes reading stdin, it also
     /// errors if zero bytes are read.
@@ -269,6 +269,56 @@ where
             }),
         }
     }
+
+    /// Writes the value at the memory pointer into `file`
+    ///
+    /// If an I/O Error occurs while trying to write the file, it returns that error wrapped inside a [VMError].
+    ///
+    /// Because I can't think of how brainfuck should respond to the file not accepting any more bytes, it also
+    /// errors if zero bytes are written.
+    ///
+    /// # Examples
+    /// ```
+    /// # use bft_interp;
+    /// # use bft_types;
+    /// // Setup
+    /// let prog: bft_types::DecoratedProgram = bft_types::DecoratedProgram::from_program(
+    ///     &bft_types::Program::new("<None>", "[,.]")
+    /// ).unwrap();
+    /// let mut interp: bft_interp::Machine<u8> = bft_interp::Machine::new(None, false, &prog);
+    /// let mut data = std::io::Cursor::new(vec![7]);
+    /// // Preload data into the Machine
+    /// interp.read_value(&mut data);
+    ///
+    /// // Actually write a value to file
+    /// interp.write_value(&mut data);
+    /// assert_eq!(data.get_ref()[1], 7);
+    /// ```
+    pub fn write_value(&mut self, file: &mut impl Write) -> Result<(), VMError> {
+        let mut buffer: [u8; 1] = [0; 1];
+        buffer[0] = self.cells[self.head].get_value();
+        match file.write(&buffer) {
+            Ok(bytes_read) => {
+                if bytes_read == 0 {
+                    // This *could* mean that the output file couldn't accept any more bytes.
+                    // I don't know what brainfuck should do in this case, other than error.
+                    Err(VMError::IOError {
+                        instruction: self.current_instruction().instruction(),
+                        source: std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            "Unexpected zero bytes written",
+                        ),
+                    })
+                } else {
+                    Ok(())
+                }
+            }
+            Err(ioerror) => Err(VMError::IOError {
+                instruction: self.current_instruction().instruction(),
+                source: ioerror,
+            }),
+        }
+    }
 }
 
 /// Runtime errors in the interpreter
@@ -294,6 +344,8 @@ pub trait CellKind: std::clone::Clone + Default {
     ///
     /// Note that the value is a u8 because brainfuck only reads single bytes from stdin
     fn set_value(&mut self, value: u8);
+    /// Gets the cell's value as a single byte
+    fn get_value(&self) -> u8;
 }
 
 impl CellKind for u8 {
@@ -306,5 +358,8 @@ impl CellKind for u8 {
 
     fn set_value(&mut self, value: u8) {
         *self = value
+    }
+    fn get_value(&self) -> u8 {
+        *self
     }
 }
