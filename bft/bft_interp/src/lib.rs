@@ -257,9 +257,6 @@ where
     ///
     /// If an I/O Error occurs while trying to read the file, it returns that error wrapped inside a [VMError].
     ///
-    /// Because I couldn't think of what brainfuck should do if it ever runs out of bytes reading stdin, it also
-    /// errors if zero bytes are read.
-    ///
     /// # Examples
     /// ```
     /// # use bft_interp;
@@ -275,21 +272,10 @@ where
     /// TODO: More examples?
     pub fn read_value(&mut self, file: &mut impl Read) -> Result<(), VMError> {
         let mut buffer: [u8; 1] = [0; 1];
-        match file.read(&mut buffer) {
-            Ok(bytes_read) => {
-                if bytes_read == 0 {
-                    // This *could* just mean "end of file", but I don't know what brainfuck should do in that case
-                    Err(VMError::IOError {
-                        instruction: self.current_instruction().instruction(),
-                        source: std::io::Error::new(
-                            std::io::ErrorKind::Other,
-                            "Unexpected zero bytes read",
-                        ),
-                    })
-                } else {
-                    self.cells[self.head].set_value(buffer[0]);
-                    Ok(())
-                }
+        match file.read_exact(&mut buffer) {
+            Ok(()) => {
+                self.cells[self.head].set_value(buffer[0]);
+                Ok(())
             }
             Err(ioerror) => Err(VMError::IOError {
                 instruction: self.current_instruction().instruction(),
@@ -301,9 +287,6 @@ where
     /// Writes the value at the memory pointer into `file`
     ///
     /// If an I/O Error occurs while trying to write the file, it returns that error wrapped inside a [VMError].
-    ///
-    /// Because I can't think of how brainfuck should respond to the file not accepting any more bytes, it also
-    /// errors if zero bytes are written.
     ///
     /// # Examples
     /// ```
@@ -325,27 +308,10 @@ where
     pub fn write_value(&mut self, file: &mut impl Write) -> Result<(), VMError> {
         let mut buffer: [u8; 1] = [0; 1];
         buffer[0] = self.cells[self.head].get_value();
-        match file.write(&buffer) {
-            Ok(bytes_read) => {
-                if bytes_read == 0 {
-                    // This *could* mean that the output file couldn't accept any more bytes.
-                    // I don't know what brainfuck should do in this case, other than error.
-                    Err(VMError::IOError {
-                        instruction: self.current_instruction().instruction(),
-                        source: std::io::Error::new(
-                            std::io::ErrorKind::Other,
-                            "Unexpected zero bytes written",
-                        ),
-                    })
-                } else {
-                    Ok(())
-                }
-            }
-            Err(ioerror) => Err(VMError::IOError {
-                instruction: self.current_instruction().instruction(),
-                source: ioerror,
-            }),
-        }
+        file.write_all(&buffer).map_err(|e| VMError::IOError {
+            instruction: self.current_instruction().instruction(),
+            source: e,
+        })
     }
 }
 
