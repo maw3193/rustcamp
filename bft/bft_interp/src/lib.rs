@@ -8,6 +8,34 @@ use bft_types::{DecoratedInstruction, DecoratedProgram, PositionedInstruction};
 
 use thiserror::Error;
 
+pub trait CellKind: std::clone::Clone + Default {
+    /// Increase the value of the cell by 1
+    fn increment(&mut self);
+    /// Decrease the value of the cell by 1
+    fn decrement(&mut self);
+    /// Sets the cell's value to the given value
+    ///
+    /// Note that the value is a u8 because brainfuck only reads single bytes from stdin
+    fn set_value(&mut self, value: u8);
+    /// Gets the cell's value as a single byte
+    fn get_value(&self) -> u8;
+}
+
+impl CellKind for u8 {
+    fn increment(&mut self) {
+        *self = self.wrapping_add(1)
+    }
+    fn decrement(&mut self) {
+        *self = self.wrapping_sub(1)
+    }
+
+    fn set_value(&mut self, value: u8) {
+        *self = value
+    }
+    fn get_value(&self) -> u8 {
+        *self
+    }
+}
 /// A brainfuck virtual machine
 ///
 /// The type T is the type that all brainfuck cells will be.
@@ -333,33 +361,4 @@ pub enum VMError {
         instruction: PositionedInstruction,
         source: std::io::Error,
     },
-}
-
-pub trait CellKind: std::clone::Clone + Default {
-    /// Increase the value of the cell by 1
-    fn increment(&mut self);
-    /// Decrease the value of the cell by 1
-    fn decrement(&mut self);
-    /// Sets the cell's value to the given value
-    ///
-    /// Note that the value is a u8 because brainfuck only reads single bytes from stdin
-    fn set_value(&mut self, value: u8);
-    /// Gets the cell's value as a single byte
-    fn get_value(&self) -> u8;
-}
-
-impl CellKind for u8 {
-    fn increment(&mut self) {
-        *self = self.wrapping_add(1)
-    }
-    fn decrement(&mut self) {
-        *self = self.wrapping_sub(1)
-    }
-
-    fn set_value(&mut self, value: u8) {
-        *self = value
-    }
-    fn get_value(&self) -> u8 {
-        *self
-    }
 }
