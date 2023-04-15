@@ -123,6 +123,14 @@ impl DecoratedInstruction {
             Self::PlaceholderOpenBracket => unreachable!(),
         }
     }
+
+    pub fn line(&self) -> usize {
+        self.instruction().line()
+    }
+
+    pub fn character(&self) -> usize {
+        self.instruction().character()
+    }
 }
 
 impl fmt::Display for DecoratedInstruction {
@@ -138,7 +146,20 @@ pub struct DecoratedProgram {
     file: PathBuf,
     decorated_instructions: Vec<DecoratedInstruction>,
 }
-
+impl DecoratedProgram {
+    pub fn position_to_index(&self, line: usize, character: usize) -> usize {
+        self.decorated_instructions
+            .binary_search_by(|instruction| {
+                instruction
+                    .line()
+                    .cmp(&line)
+                    .then(instruction.character().cmp(&character))
+            })
+            .unwrap()
+        // >:| I can't just search for the DecoratedInstruction because I don't store it
+        //
+    }
+}
 impl fmt::Display for DecoratedProgram {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for instruction in self.decorated_instructions() {
