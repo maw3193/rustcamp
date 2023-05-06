@@ -4,7 +4,7 @@
 use std::io::{Read, Write};
 use std::num::NonZeroUsize;
 
-use bft_types::{DecoratedInstruction, DecoratedProgram, PositionedInstruction};
+use bft_types::{DecoratedInstruction, DecoratedProgram, PositionedInstruction, RawInstruction};
 
 use thiserror::Error;
 
@@ -19,6 +19,8 @@ pub trait CellKind: std::clone::Clone + Default {
     fn set_value(&mut self, value: u8);
     /// Gets the cell's value as a single byte
     fn get_value(&self) -> u8;
+    /// Returns whether the cell's value is equal to zero
+    fn is_zero(&self) -> bool;
 }
 
 impl CellKind for u8 {
@@ -34,6 +36,10 @@ impl CellKind for u8 {
     }
     fn get_value(&self) -> u8 {
         *self
+    }
+
+    fn is_zero(&self) -> bool {
+        *self == 0
     }
 }
 /// A brainfuck virtual machine
@@ -91,6 +97,10 @@ impl<'a, T> Machine<'a, T> {
         self.prog().decorated_instructions()[self.instruction_pointer]
     }
 
+    fn next_instruction(&self) -> usize {
+        self.instruction_pointer + 1
+    }
+
     /// Decrements the memory pointer
     ///
     /// If doing so would cause the memory pointer to become negative, it instead returns a [VMError::SeekTooLow]
@@ -118,14 +128,14 @@ impl<'a, T> Machine<'a, T> {
     /// ```
     /// TODO! Come back here when moving the head is more useful
     /// TODO! Once I can run programs, decide whether I want to allow external mutation of program state
-    pub fn seek_left(&mut self) -> Result<(), VMError> {
+    pub fn seek_left(&mut self) -> Result<usize, VMError> {
         if self.head == 0 {
             Err(VMError::SeekTooLow(
                 self.current_instruction().instruction(),
             ))
         } else {
             self.head -= 1;
-            Ok(())
+            Ok(self.next_instruction())
         }
     }
 }
@@ -203,7 +213,7 @@ where
     /// ```
     /// TODO! Come back here when moving the head is more useful
     /// TODO! Once I can run programs, decide whether I want to allow external mutation of program state
-    pub fn seek_right(&mut self) -> Result<(), VMError> {
+    pub fn seek_right(&mut self) -> Result<usize, VMError> {
         if self.head + 1 == self.cells.len() {
             if !self.may_grow {
                 return Err(VMError::SeekTooHigh(
@@ -214,7 +224,11 @@ where
             }
         }
         self.head += 1;
-        Ok(())
+        Ok(self.next_instruction())
+    }
+
+    pub fn current_cell(&mut self) -> &mut T {
+        &mut self.cells[self.head]
     }
 
     /// Increase the value of the cell at the data pointer
@@ -231,8 +245,9 @@ where
     /// interp.increment_cell();
     /// assert_eq!(interp.cells()[0], 1);
     /// ```
-    pub fn increment_cell(&mut self) {
-        self.cells[self.head].increment()
+    pub fn increment_cell(&mut self) -> Result<usize, VMError> {
+        self.current_cell().increment();
+        Ok(self.next_instruction())
     }
 
     /// Decrease the value of the cell at the data pointer
@@ -249,8 +264,9 @@ where
     /// interp.decrement_cell();
     /// assert_eq!(interp.cells()[0], 255);
     /// ```
-    pub fn decrement_cell(&mut self) {
-        self.cells[self.head].decrement()
+    pub fn decrement_cell(&mut self) -> Result<usize, VMError> {
+        self.current_cell().decrement();
+        Ok(self.next_instruction())
     }
 
     /// Read a value from `file` into memory at the memory pointer
@@ -270,12 +286,12 @@ where
     /// assert_eq!(interp.cells()[0], 7);
     /// ```
     /// TODO: More examples?
-    pub fn read_value(&mut self, file: &mut impl Read) -> Result<(), VMError> {
+    pub fn read_value(&mut self, file: &mut impl Read) -> Result<usize, VMError> {
         let mut buffer: [u8; 1] = [0; 1];
         match file.read_exact(&mut buffer) {
             Ok(()) => {
-                self.cells[self.head].set_value(buffer[0]);
-                Ok(())
+                self.current_cell().set_value(buffer[0]);
+                Ok(self.next_instruction())
             }
             Err(ioerror) => Err(VMError::IOError {
                 instruction: self.current_instruction().instruction(),
@@ -305,13 +321,82 @@ where
     /// interp.write_value(&mut data);
     /// assert_eq!(data.get_ref()[1], 7);
     /// ```
-    pub fn write_value(&mut self, file: &mut impl Write) -> Result<(), VMError> {
+    pub fn write_value(&mut self, file: &mut impl Write) -> Result<usize, VMError> {
         let mut buffer: [u8; 1] = [0; 1];
-        buffer[0] = self.cells[self.head].get_value();
-        file.write_all(&buffer).map_err(|e| VMError::IOError {
-            instruction: self.current_instruction().instruction(),
-            source: e,
-        })
+        buffer[0] = self.current_cell().get_value();
+        file.write_all(&buffer)
+            .and_then(|_| file.flush())
+            .map_err(|e| VMError::IOError {
+                instruction: self.current_instruction().instruction(),
+                source: e,
+            })
+            .and(Ok(self.next_instruction()))
+    }
+
+    pub fn open_loop(&mut self) -> Result<usize, VMError> {
+        if self.current_cell().is_zero() {
+            assert!(matches!(
+                self.current_instruction(),
+                DecoratedInstruction::OpenLoop { .. }
+            ));
+            match self.current_instruction() {
+                DecoratedInstruction::OpenLoop {
+                    instruction: _,
+                    closer,
+                } => Ok(self
+                    .prog
+                    .position_to_index(closer.line(), closer.character())
+                    + 1),
+                _ => unreachable!(),
+            }
+        } else {
+            Ok(self.next_instruction())
+        }
+    }
+
+    pub fn close_loop(&mut self) -> Result<usize, VMError> {
+        assert!(matches!(
+            self.current_instruction(),
+            DecoratedInstruction::CloseLoop { .. }
+        ));
+
+        match self.current_instruction() {
+            DecoratedInstruction::CloseLoop {
+                instruction: _,
+                opener,
+            } => Ok(self
+                .prog()
+                .position_to_index(opener.line(), opener.character())),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn interpret(
+        &mut self,
+        input: &mut impl Read,
+        output: &mut impl Write,
+    ) -> Result<(), VMError> {
+        while self.instruction_pointer < self.prog().decorated_instructions().len() {
+            self.instruction_pointer = self.interpret_current_instruction(input, output)?
+        }
+        Ok(())
+    }
+
+    fn interpret_current_instruction(
+        &mut self,
+        input: &mut impl Read,
+        output: &mut impl Write,
+    ) -> Result<usize, VMError> {
+        match self.current_instruction().instruction().instruction() {
+            RawInstruction::OpenLoop => self.open_loop(),
+            RawInstruction::CloseLoop => self.close_loop(),
+            RawInstruction::DecrementDataPointer => self.seek_left(),
+            RawInstruction::IncrementDataPointer => self.seek_right(),
+            RawInstruction::IncrementByte => self.increment_cell(),
+            RawInstruction::DecrementByte => self.decrement_cell(),
+            RawInstruction::GetByte => self.read_value(input),
+            RawInstruction::PutByte => self.write_value(output),
+        }
     }
 }
 
@@ -327,4 +412,27 @@ pub enum VMError {
         instruction: PositionedInstruction,
         source: std::io::Error,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Test that a simple "hello world" program works
+    #[test]
+    fn test_hello_world() {
+        use bft_types::{DecoratedProgram, Program};
+        let hello_world_text =
+            ">++++++++[<+++++++++>-]<.>++++[<+++++++>-]<+.+++++++..+++.>>++++++[<+++++++>-]<+
+        +.------------.>++++++[<+++++++++>-]<+.<.+++.------.--------.>>>++++[<++++++++>-
+        ]<+.";
+        let mut input = std::io::Cursor::new(Vec::new());
+        let mut output = std::io::Cursor::new(Vec::new());
+        let prog = Program::new("<no program>", &hello_world_text);
+        let decorated = DecoratedProgram::from_program(&prog).unwrap();
+        let mut machine: Machine<u8> = Machine::new(None, false, &decorated);
+        let result = machine.interpret(&mut input, &mut output);
+        assert!(result.is_ok());
+        assert_eq!(output.into_inner(), "Hello, World!".as_bytes());
+    }
 }
