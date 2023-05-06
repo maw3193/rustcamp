@@ -325,6 +325,7 @@ where
         let mut buffer: [u8; 1] = [0; 1];
         buffer[0] = self.current_cell().get_value();
         file.write_all(&buffer)
+            .and_then(|_| file.flush())
             .map_err(|e| VMError::IOError {
                 instruction: self.current_instruction().instruction(),
                 source: e,
@@ -376,19 +377,26 @@ where
         output: &mut impl Write,
     ) -> Result<(), VMError> {
         while self.instruction_pointer < self.prog().decorated_instructions().len() {
-            self.instruction_pointer = match self.current_instruction().instruction().instruction()
-            {
-                RawInstruction::OpenLoop => self.open_loop(),
-                RawInstruction::CloseLoop => self.close_loop(),
-                RawInstruction::DecrementDataPointer => self.seek_left(),
-                RawInstruction::IncrementDataPointer => self.seek_right(),
-                RawInstruction::IncrementByte => self.increment_cell(),
-                RawInstruction::DecrementByte => self.decrement_cell(),
-                RawInstruction::GetByte => self.read_value(input),
-                RawInstruction::PutByte => self.write_value(output),
-            }?
+            self.instruction_pointer = self.interpret_current_instruction(input, output)?
         }
         Ok(())
+    }
+
+    fn interpret_current_instruction(
+        &mut self,
+        input: &mut impl Read,
+        output: &mut impl Write,
+    ) -> Result<usize, VMError> {
+        match self.current_instruction().instruction().instruction() {
+            RawInstruction::OpenLoop => self.open_loop(),
+            RawInstruction::CloseLoop => self.close_loop(),
+            RawInstruction::DecrementDataPointer => self.seek_left(),
+            RawInstruction::IncrementDataPointer => self.seek_right(),
+            RawInstruction::IncrementByte => self.increment_cell(),
+            RawInstruction::DecrementByte => self.decrement_cell(),
+            RawInstruction::GetByte => self.read_value(input),
+            RawInstruction::PutByte => self.write_value(output),
+        }
     }
 }
 
@@ -404,4 +412,27 @@ pub enum VMError {
         instruction: PositionedInstruction,
         source: std::io::Error,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Test that a simple "hello world" program works
+    #[test]
+    fn test_hello_world() {
+        use bft_types::{DecoratedProgram, Program};
+        let hello_world_text =
+            ">++++++++[<+++++++++>-]<.>++++[<+++++++>-]<+.+++++++..+++.>>++++++[<+++++++>-]<+
+        +.------------.>++++++[<+++++++++>-]<+.<.+++.------.--------.>>>++++[<++++++++>-
+        ]<+.";
+        let mut input = std::io::Cursor::new(Vec::new());
+        let mut output = std::io::Cursor::new(Vec::new());
+        let prog = Program::new("<no program>", &hello_world_text);
+        let decorated = DecoratedProgram::from_program(&prog).unwrap();
+        let mut machine: Machine<u8> = Machine::new(None, false, &decorated);
+        let result = machine.interpret(&mut input, &mut output);
+        assert!(result.is_ok());
+        assert_eq!(output.into_inner(), "Hello, World!".as_bytes());
+    }
 }
